@@ -1,13 +1,11 @@
 
 #include <sys/types.h>
-#include <sys/uio.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <limits.h>
 #include <paths.h>
 #include <stdint.h>
@@ -17,13 +15,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "crypto_box.h"
-#include "crypto_sign_ed25519.h"
-#include "randombytes.h"
-
-#ifndef _PATH_DEVRANDOM
-# define _PATH_DEVRANDOM "/dev/random"
-#endif
+#include <sodium.h>
 
 struct bincert {
     uint8_t magic_cert[4];
@@ -63,29 +55,6 @@ typedef struct signed_bincert signed_bincert_t;
 #define SERVER_SIGN_SECRETKEY "\x46\x55\x43\x4B\x20\x41\x20\x44\x55\x43\x4B" \
 "\x46\x55\x43\x4B\x20\x41\x20\x44\x55\x43\x4B\x46\x55\x43\x4B\x20\x41\x20\x44\x55\x43\x4B" \
 "\x46\x55\x43\x4B\x20\x41\x20\x44\x55\x43\x4B\x46\x55\x43\x4B\x20\x41\x20\x44\x55\x43\x4B"
-
-void
-randombytes(unsigned char * const buf, const unsigned long long buf_len)
-{
-    assert(buf_len <= SIZE_MAX);
-
-    size_t  i = (size_t) 0U;
-    ssize_t nbread;
-    int     fd;
-
-    if ((fd = open(_PATH_DEVRANDOM, O_RDONLY)) == -1) {
-        abort();
-    }
-    while (i < (size_t) buf_len) {
-        while ((nbread = read(fd, buf + i, (ssize_t) 1U)) != (ssize_t) 1) {
-            if (nbread != (ssize_t) -1 || errno != EINTR) {
-                abort();
-            }
-        }
-        i++;
-    }
-    (void) close(fd);
-}
 
 static void
 dnscrypt_key_to_fingerprint(char fingerprint[80U], const uint8_t * const key)
@@ -264,6 +233,7 @@ bincert_build_and_display(void)
 int
 main(void)
 {
+    sodium_init();
     if (bincert_build_and_display() != 0) {
         return 1;
     }
